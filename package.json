@@ -1,0 +1,43 @@
+{
+  "name": "komodoplex-messages",
+  "version": "1.0.0",
+  "description": "Centralized message ingestion service for Komodoplex",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "start": "wrangler dev",
+    "build": "wrangler build",
+    "deploy": "wrangler deploy --minify",
+    "cf-typegen": "wrangler types --env-interface CloudflareBindings",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "d1:migrate:local": "wrangler d1 migrations apply DB --local",
+    "d1:migrate:remote": "wrangler d1 migrations apply DB --remote",
+    "d1:migrate:create": "wrangler d1 migrations create DB",
+    "d1:migrations:list": "wrangler d1 migrations list DB --local",
+    "db:migrate": "kysely migrate:latest",
+    "db:rollback": "kysely migrate:rollback --all",
+    "db:migrate:fresh": "pnpm run db:rollback && pnpm run db:migrate",
+    "db:make:raw": "kysely migrate:make",
+    "db:migrate:make": "tsx scripts/make-migration.ts",
+    "db:make": "pnpm run db:migrate:make"
+  },
+  "dependencies": {
+    "hono": "^4.12.15",
+    "kysely": "^0.29.6",
+    "kysely-d1": "^0.4.0",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250224.0",
+    "@types/better-sqlite3": "^9.6.0",
+    "@types/node": "^24.12.2",
+    "better-sqlite3": "^13.0.3",
+    "kysely-ctl": "^0.21.0",
+    "tsx": "^4.23.15",
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.7",
+    "wrangler": "^4.4.0"
+  }
+}
