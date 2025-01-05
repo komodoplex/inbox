@@ -1,0 +1,12 @@
+# .dev.vars template for local development (wrangler dev)
+# NEVER STORE SECRETS OR PRODUCTION CREDENTIALS HERE!
+# The real .dev.vars file is ignored by .gitignore.
+
+ENVIRONMENT="development"
+
+# Cloudflare Turnstile dummy test secret key (Official Cloudflare Always-Pass Secret)
+# Reference: https://developers.cloudflare.com/turnstile/reference/testing/
+TURNSTILE_SECRET_KEY="1x0000000000000000000000000000000AA"
+
+# Dummy internal API key for local /v1/internal testing only
+INTERNAL_API_KEY="dev-internal-key-for-local-testing-only"
