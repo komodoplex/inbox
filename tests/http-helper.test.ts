@@ -77,4 +77,34 @@ describe('HttpHelper', () => {
     expect(json.code).toBe(ERROR_CODES.INVALID_REQUEST)
     expect(json.message).toBe('Request body must be valid JSON.')
   })
+
+  it('normalizes trailing slash on request URL while preserving root / and cf metadata', () => {
+    const rootReq = new Request('https://inbox.komodoplex.com/')
+    expect(HttpHelper.normalizeTrailingSlash(rootReq).url).toBe(
+      'https://inbox.komodoplex.com/'
+    )
+
+    const noSlashReq = new Request('https://inbox.komodoplex.com/v1/public')
+    expect(HttpHelper.normalizeTrailingSlash(noSlashReq).url).toBe(
+      'https://inbox.komodoplex.com/v1/public'
+    )
+
+    const slashReq = new Request('https://inbox.komodoplex.com/v1/public/')
+    const normalizedSlash = HttpHelper.normalizeTrailingSlash(slashReq)
+    expect(normalizedSlash.url).toBe('https://inbox.komodoplex.com/v1/public')
+
+    const multiSlashReq = new Request('https://inbox.komodoplex.com/health///')
+    const normalizedMulti = HttpHelper.normalizeTrailingSlash(multiSlashReq)
+    expect(normalizedMulti.url).toBe('https://inbox.komodoplex.com/health')
+
+    const cfReq = new Request('https://inbox.komodoplex.com/v1/public/')
+    Object.defineProperty(cfReq, 'cf', {
+      value: { country: 'ID' },
+      enumerable: true,
+    })
+    const normalizedCf = HttpHelper.normalizeTrailingSlash(cfReq) as Request & {
+      cf?: { country: string }
+    }
+    expect(normalizedCf.cf?.country).toBe('ID')
+  })
 })

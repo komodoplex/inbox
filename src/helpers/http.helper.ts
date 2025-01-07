@@ -41,6 +41,33 @@ class HttpHelper {
   ): Response {
     return c.json(data, status)
   }
+
+  /**
+   * Normalize request URL pathname by stripping trailing slashes
+   * (e.g. /v1/public/ -> /v1/public) while preserving method, body, and cf metadata
+   */
+  public static normalizeTrailingSlash(request: Request): Request {
+    const url = new URL(request.url)
+    const isRoot = url.pathname === '/'
+    if (isRoot || !url.pathname.endsWith('/')) {
+      return request
+    }
+
+    url.pathname = url.pathname.replace(/\/+$/, '')
+    const normalized = new Request(url.toString(), request)
+    const reqWithCf = request as Request & { cf?: IncomingRequestCfProperties }
+
+    if (reqWithCf.cf) {
+      Object.defineProperty(normalized, 'cf', {
+        value: reqWithCf.cf,
+        writable: false,
+        enumerable: true,
+        configurable: true,
+      })
+    }
+
+    return normalized
+  }
 }
 
 const httpHelper = HttpHelper

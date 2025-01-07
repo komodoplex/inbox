@@ -81,6 +81,35 @@ describe('Unified Public Messages Ingestion API (/v1/public)', () => {
     expect(json.conversationId).toBeDefined()
   })
 
+  it('successfully ingests request with trailing slash (/v1/public/) without 404', async () => {
+    const res = await app.request(
+      '/v1/public/',
+      {
+        method: 'POST',
+        headers: {
+          [HTTP_HEADERS.CONTENT_TYPE]: 'application/json',
+          [HTTP_HEADERS.ORIGIN]: `https://${ALLOWED_ORIGIN_DOMAINS.KOMODOPLEX}`,
+        },
+        body: JSON.stringify({
+          type: INGESTION_TYPES.KOMODOPLEX_HELLO,
+          name: 'Trailing Slash Test',
+          email: 'slash@komodoplex.com',
+          message: 'Testing trailing slash normalization.',
+          turnstileToken: 'test-pass-token',
+        }),
+      },
+      {
+        DB: db,
+        TURNSTILE_SECRET_KEY: 'test-turnstile-secret',
+      }
+    )
+
+    expect(res.status).toBe(201)
+    const json = (await res.json()) as { success: boolean; conversationId: string }
+    expect(json.success).toBe(true)
+    expect(json.conversationId).toBeDefined()
+  })
+
   it('successfully ingests a valid REPUTASK_FEEDS_SUBSCRIPTION message', async () => {
     const res = await app.request(
       '/v1/public',
