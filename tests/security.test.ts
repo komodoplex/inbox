@@ -37,21 +37,24 @@ describe('Security Hardening Verification Suite', () => {
   })
 
   describe('Hardened Origin / CORS Bypasses', () => {
-    const allowedDomains = ['komodoplex.com', 'reputask.xyz']
+    const allowedDomains = ['komodoplex.com', 'reputask.xyz', 'reputask.app']
 
     it('rejects unencrypted HTTP origins in production', () => {
       expect(isOriginAllowed('http://komodoplex.com', allowedDomains, false)).toBe(false)
       expect(isOriginAllowed('http://reputask.xyz', allowedDomains, false)).toBe(false)
+      expect(isOriginAllowed('http://reputask.app', allowedDomains, false)).toBe(false)
     })
 
     it('rejects non-standard ports in production', () => {
       expect(isOriginAllowed('https://komodoplex.com:8080', allowedDomains, false)).toBe(false)
       expect(isOriginAllowed('https://komodoplex.com:8443', allowedDomains, false)).toBe(false)
+      expect(isOriginAllowed('https://reputask.app:8443', allowedDomains, false)).toBe(false)
     })
 
     it('rejects subdomain spoofing and malformed hostnames', () => {
       expect(isOriginAllowed('https://evilkomodoplex.com', allowedDomains, false)).toBe(false)
       expect(isOriginAllowed('https://komodoplex.com.evil.com', allowedDomains, false)).toBe(false)
+      expect(isOriginAllowed('https://evilreputask.app', allowedDomains, false)).toBe(false)
       expect(isOriginAllowed('https://.komodoplex.com', allowedDomains, false)).toBe(false)
       expect(isOriginAllowed('https://..komodoplex.com', allowedDomains, false)).toBe(false)
       expect(isOriginAllowed('null', allowedDomains, false)).toBe(false)
@@ -62,6 +65,8 @@ describe('Security Hardening Verification Suite', () => {
       expect(isOriginAllowed('https://komodoplex.com', allowedDomains, false)).toBe(true)
       expect(isOriginAllowed('https://studio.komodoplex.com', allowedDomains, false)).toBe(true)
       expect(isOriginAllowed('https://api.reputask.xyz', allowedDomains, false)).toBe(true)
+      expect(isOriginAllowed('https://reputask.app', allowedDomains, false)).toBe(true)
+      expect(isOriginAllowed('https://www.reputask.app', allowedDomains, false)).toBe(true)
       expect(isOriginAllowed('https://komodoplex.com.', allowedDomains, false)).toBe(true)
     })
 

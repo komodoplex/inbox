@@ -38,7 +38,8 @@ const isAllowedTurnstileHostname = (
 
   return (
     isDomainOrSubdomain(lower, ALLOWED_ORIGIN_DOMAINS.KOMODOPLEX) ||
-    isDomainOrSubdomain(lower, ALLOWED_ORIGIN_DOMAINS.REPUTASK)
+    isDomainOrSubdomain(lower, ALLOWED_ORIGIN_DOMAINS.REPUTASK) ||
+    isDomainOrSubdomain(lower, ALLOWED_ORIGIN_DOMAINS.REPUTASK_APP)
   )
 }
 

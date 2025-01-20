@@ -7,6 +7,7 @@ import type { AppEnvironment } from '@/types/env'
 const ALLOWED_DOMAINS_LIST: readonly string[] = [
   ALLOWED_ORIGIN_DOMAINS.KOMODOPLEX,
   ALLOWED_ORIGIN_DOMAINS.REPUTASK,
+  ALLOWED_ORIGIN_DOMAINS.REPUTASK_APP,
 ]
 
 /**

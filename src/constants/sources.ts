@@ -20,6 +20,7 @@ type SourceSlug = (typeof SOURCE_SLUGS)[keyof typeof SOURCE_SLUGS]
 const ALLOWED_ORIGIN_DOMAINS = {
   KOMODOPLEX: 'komodoplex.com',
   REPUTASK: 'reputask.xyz',
+  REPUTASK_APP: 'reputask.app',
 } as const
 
 const DEFAULT_SUBJECTS = {

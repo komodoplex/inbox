@@ -34,7 +34,10 @@ const INGESTION_CONFIG: Record<PublicMessageType, IngestionTypeConfig> = {
   },
   [INGESTION_TYPES.REPUTASK_FEEDS_SUBSCRIPTION]: {
     sourceSlug: SOURCE_SLUGS.REPUTASK_FEEDS,
-    allowedDomains: [ALLOWED_ORIGIN_DOMAINS.REPUTASK],
+    allowedDomains: [
+      ALLOWED_ORIGIN_DOMAINS.REPUTASK,
+      ALLOWED_ORIGIN_DOMAINS.REPUTASK_APP,
+    ],
   },
 }
 
