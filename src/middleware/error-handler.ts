@@ -7,6 +7,12 @@ import type { AppEnvironment } from '@/types/env'
 
 const DEFAULT_REQUEST_ID = 'unknown'
 const LOG_INTERNAL_ERROR = 'internal_server_error'
+const SENSITIVE_PATTERN_REGEX =
+  /(bearer\s+[a-zA-Z0-9._~+/-]+|key=[a-zA-Z0-9._~+/-]+|token=[a-zA-Z0-9._~+/-]+|secret=[a-zA-Z0-9._~+/-]+)/gi
+
+const sanitizeLogMessage = (msg: string): string => {
+  return msg.replace(SENSITIVE_PATTERN_REGEX, '[REDACTED]')
+}
 
 interface ErrorResponseBody {
   error: {
@@ -83,7 +89,7 @@ const errorHandler = (
     JSON.stringify({
       event: LOG_INTERNAL_ERROR,
       requestId,
-      message: error.message,
+      message: sanitizeLogMessage(error.message),
       timestamp: Date.now(),
     })
   )

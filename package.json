@@ -6,8 +6,8 @@
   "scripts": {
     "dev": "wrangler dev",
     "start": "wrangler dev",
-    "build": "wrangler build",
-    "deploy": "wrangler deploy --minify",
+    "build": "node scripts/prepare-ci.mjs && wrangler build",
+    "deploy": "node scripts/prepare-ci.mjs && wrangler deploy --minify",
     "cf-typegen": "wrangler types --env-interface CloudflareBindings",
     "test": "vitest run",
     "test:watch": "vitest",

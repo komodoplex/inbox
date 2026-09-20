@@ -1,6 +1,7 @@
 import type { MiddlewareHandler } from 'hono'
 import { assertInternalAuth } from '@/checks'
 import { HTTP_HEADERS } from '@/constants/http'
+import { verifyAccessJwt } from '@/services/cf-access.service'
 import type { AppEnvironment } from '@/types/env'
 
 const CF_ACCESS_EMAIL_HEADER = 'cf-access-authenticated-user-email'
@@ -10,51 +11,74 @@ const BEARER_PREFIX_REGEX = /^Bearer\s+/i
 const API_KEY_USER_IDENTIFIER = 'api-key-user'
 
 /**
- * Constant-time byte comparison to prevent timing attacks on secrets
+ * Constant-time comparison using fixed-length SHA-256 digests to prevent timing and length attacks
  */
-const timingSafeEqual = (a: string, b: string): boolean => {
+const timingSafeEqual = async (a: string, b: string): Promise<boolean> => {
   const enc = new TextEncoder()
-  const aBuf = enc.encode(a)
-  const bBuf = enc.encode(b)
-  if (aBuf.byteLength !== bBuf.byteLength) {
-    return false
+  const aHash = await crypto.subtle.digest('SHA-256', enc.encode(a))
+  const bHash = await crypto.subtle.digest('SHA-256', enc.encode(b))
+
+  if (
+    typeof (crypto.subtle as { timingSafeEqual?: unknown }).timingSafeEqual ===
+    'function'
+  ) {
+    return (
+      crypto.subtle as unknown as {
+        timingSafeEqual: (x: ArrayBuffer, y: ArrayBuffer) => boolean
+      }
+    ).timingSafeEqual(aHash, bHash)
   }
 
+  const aBuf = new Uint8Array(aHash)
+  const bBuf = new Uint8Array(bHash)
   let diff = 0
-  for (let i = 0; i < aBuf.byteLength; i++) {
+  for (let i = 0; i < 32; i++) {
     diff |= aBuf[i] ^ bBuf[i]
   }
-  return diff === 0
+  return diff === 0 && a === b
 }
 
 /**
- * Cloudflare Access identity reader and fail-closed internal access guard
+ * Internal authentication middleware supporting verified Cloudflare Access JWT and API key
  */
 const internalAuthMiddleware = (): MiddlewareHandler<AppEnvironment> => {
   return async (c, next) => {
-    const accessEmail = c.req.header(CF_ACCESS_EMAIL_HEADER)
     const accessJwt = c.req.header(CF_ACCESS_JWT_HEADER)
+    const accessEmailHeader = c.req.header(CF_ACCESS_EMAIL_HEADER)
     const apiKey =
       c.req.header(X_API_KEY_HEADER) ||
       c.req.header(HTTP_HEADERS.AUTHORIZATION)?.replace(BEARER_PREFIX_REGEX, '')
     const expectedApiKey = c.env.INTERNAL_API_KEY
-    const isDevOrTest =
-      c.env.ENVIRONMENT === 'development' || c.env.ENVIRONMENT === 'test'
 
-    const isApiKeyValid = Boolean(
-      expectedApiKey && apiKey && timingSafeEqual(apiKey, expectedApiKey)
-    )
-    const isAccessValid = Boolean(
-      accessEmail && (isDevOrTest || accessJwt)
-    )
+    // 1. Check API Key with constant-time comparison
+    let isApiKeyValid = false
+    if (expectedApiKey && apiKey) {
+      isApiKeyValid = await timingSafeEqual(apiKey, expectedApiKey)
+    }
 
-    const isAuthorized = isApiKeyValid || isAccessValid
+    // 2. Cryptographically verify Cloudflare Access JWT
+    let verifiedAccessEmail: string | null = null
+    if (accessJwt) {
+      const verified = await verifyAccessJwt(accessJwt, c.env)
+      if (verified) {
+        if (
+          !accessEmailHeader ||
+          accessEmailHeader.toLowerCase() === verified.email.toLowerCase()
+        ) {
+          verifiedAccessEmail = verified.email
+        }
+      }
+    }
+
+    const isAuthorized = isApiKeyValid || Boolean(verifiedAccessEmail)
     assertInternalAuth(isAuthorized)
 
-    c.set(
-      'accessUserEmail',
-      accessEmail || (isApiKeyValid ? API_KEY_USER_IDENTIFIER : null)
-    )
+    // Assign identity strictly from verified source
+    const authenticatedUser = isApiKeyValid
+      ? API_KEY_USER_IDENTIFIER
+      : verifiedAccessEmail
+
+    c.set('accessUserEmail', authenticatedUser)
     await next()
   }
 }

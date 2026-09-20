@@ -47,8 +47,7 @@ publicRouter.use('*', publicRateLimitMiddleware())
 const ingestMessage = async (c: Context<AppEnvironment>): Promise<Response> => {
   const startTime = Date.now()
   const requestId = c.get('requestId')
-  const isDevOrTest =
-    c.env.ENVIRONMENT === 'development' || c.env.ENVIRONMENT === 'test'
+  const isDevOrTest = c.env.ENVIRONMENT !== 'production'
 
   const validatedInput = await HttpHelper.request(
     c,
@@ -71,7 +70,8 @@ const ingestMessage = async (c: Context<AppEnvironment>): Promise<Response> => {
   const isTokenValid = await verifyTurnstileToken(
     c.env.TURNSTILE_SECRET_KEY,
     validatedInput.turnstileToken,
-    clientIp
+    clientIp,
+    isDevOrTest
   )
 
   assertTurnstileValid(isTokenValid)

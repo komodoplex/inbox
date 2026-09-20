@@ -49,6 +49,15 @@ const checkRateLimit = async (
     return
   }
 
+  if (bindings.ENVIRONMENT === 'production') {
+    console.warn(
+      JSON.stringify({
+        event: 'rate_limiter_unbound_warning',
+        message: 'RATE_LIMITER binding not found in production environment.',
+      })
+    )
+  }
+
   const now = Date.now()
   cleanupStore(now)
 

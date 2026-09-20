@@ -1,4 +1,5 @@
 import { BadRequestError, ForbiddenError, NotFoundError } from '@/lib/errors'
+import { isOriginAllowed } from '@/middleware/cors'
 import { ERROR_CODES } from '@/constants/errors'
 
 const ERROR_MSG_SOURCE_NOT_FOUND = 'Source not found.'
@@ -59,26 +60,8 @@ const assertSourceOriginAllowed = (
     return
   }
 
-  try {
-    const url = new URL(origin)
-    const hostname = url.hostname.toLowerCase()
-    if (isDev && (hostname === 'localhost' || hostname === '127.0.0.1')) {
-      return
-    }
-
-    const matches = allowedDomains.some(
-      (domain) => hostname === domain || hostname.endsWith(`.${domain}`)
-    )
-    if (!matches) {
-      throw new ForbiddenError(
-        ERROR_CODES.INVALID_ORIGIN,
-        ERROR_MSG_CROSS_VENTURE_ORIGIN
-      )
-    }
-  } catch (err) {
-    if (err instanceof ForbiddenError) {
-      throw err
-    }
+  const allowed = isOriginAllowed(origin, allowedDomains, isDev)
+  if (!allowed) {
     throw new ForbiddenError(
       ERROR_CODES.INVALID_ORIGIN,
       ERROR_MSG_CROSS_VENTURE_ORIGIN

@@ -14,6 +14,9 @@ interface Bindings {
   INTERNAL_API_KEY?: string
   RATE_LIMITER?: WorkersRateLimiter
   ENVIRONMENT?: string
+  CF_ACCESS_TEAM_DOMAIN?: string
+  CF_ACCESS_AUD?: string
+  CF_ACCESS_CERTS_URL?: string
 }
 
 /**

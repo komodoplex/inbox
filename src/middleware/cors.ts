@@ -10,20 +10,58 @@ const ALLOWED_DOMAINS_LIST: readonly string[] = [
 ]
 
 /**
+ * Check whether a hostname is exactly the domain or a proper subdomain
+ */
+const isDomainOrSubdomain = (hostname: string, domain: string): boolean => {
+  if (hostname === domain) {
+    return true
+  }
+  if (hostname.endsWith(`.${domain}`)) {
+    const sub = hostname.slice(0, -(domain.length + 1))
+    return sub.length > 0 && !sub.startsWith('.') && !sub.endsWith('.')
+  }
+  return false
+}
+
+/**
  * Validate whether an Origin header matches allowed venture domains
  */
-const isOriginAllowed = (origin: string, isDev: boolean = false): boolean => {
+const isOriginAllowed = (
+  origin: string | undefined,
+  allowedDomains: readonly string[] = ALLOWED_DOMAINS_LIST,
+  isDev: boolean = false
+): boolean => {
+  if (!origin || origin === 'null' || !origin.trim()) {
+    return false
+  }
+
   try {
     const url = new URL(origin)
-    const hostname = url.hostname.toLowerCase()
+    const protocol = url.protocol.toLowerCase()
 
-    if (isDev && (hostname === 'localhost' || hostname === '127.0.0.1')) {
-      return true
+    if (isDev) {
+      if (protocol !== 'http:' && protocol !== 'https:') {
+        return false
+      }
+      const hostname = url.hostname.toLowerCase().replace(/\.+$/, '')
+      if (hostname === 'localhost' || hostname === '127.0.0.1') {
+        return true
+      }
+    } else {
+      if (protocol !== 'https:') {
+        return false
+      }
+      if (url.port && url.port !== '443') {
+        return false
+      }
     }
 
-    return ALLOWED_DOMAINS_LIST.some(
-      (domain) => hostname === domain || hostname.endsWith(`.${domain}`)
-    )
+    const hostname = url.hostname.toLowerCase().replace(/\.+$/, '')
+    if (!hostname || hostname.startsWith('.')) {
+      return false
+    }
+
+    return allowedDomains.some((domain) => isDomainOrSubdomain(hostname, domain))
   } catch {
     return false
   }
@@ -37,9 +75,8 @@ const publicCorsMiddleware = (): MiddlewareHandler<AppEnvironment> => {
     const origin = c.req.header(HTTP_HEADERS.ORIGIN)
 
     if (origin) {
-      const isDev =
-        c.env.ENVIRONMENT === 'development' || c.env.ENVIRONMENT === 'test'
-      const allowed = isOriginAllowed(origin, isDev)
+      const isDev = c.env.ENVIRONMENT !== 'production'
+      const allowed = isOriginAllowed(origin, ALLOWED_DOMAINS_LIST, isDev)
       assertAllowedOrigin(allowed)
 
       c.res.headers.set(HTTP_HEADERS.ACCESS_CONTROL_ALLOW_ORIGIN, origin)
@@ -60,5 +97,5 @@ const publicCorsMiddleware = (): MiddlewareHandler<AppEnvironment> => {
   }
 }
 
-export { isOriginAllowed, publicCorsMiddleware }
+export { isDomainOrSubdomain, isOriginAllowed, publicCorsMiddleware }
 

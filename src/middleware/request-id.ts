@@ -16,6 +16,9 @@ const requestIdMiddleware = (): MiddlewareHandler<AppEnvironment> => {
     c.set('requestId', requestId)
     await next()
     c.res.headers.set(HTTP_HEADERS.X_REQUEST_ID, requestId)
+    c.res.headers.set('X-Content-Type-Options', 'nosniff')
+    c.res.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
+    c.res.headers.set('X-Frame-Options', 'DENY')
   }
 }
 

@@ -1,4 +1,5 @@
 import { assertTurnstileConfigured } from '@/checks'
+import { isDomainOrSubdomain } from '@/middleware/cors'
 import { HTTP_HEADERS } from '@/constants/http'
 import { ALLOWED_ORIGIN_DOMAINS } from '@/constants/sources'
 
@@ -10,6 +11,8 @@ const FORM_KEY_REMOTE_IP = 'remoteip'
 const TEST_SECRET = 'test-turnstile-secret'
 const TEST_PASS_TOKEN = 'test-pass-token'
 const FORM_URLENCODED_CONTENT_TYPE = 'application/x-www-form-urlencoded'
+const MAX_CHALLENGE_AGE_MS = 5 * 60 * 1000
+const MAX_FUTURE_SKEW_MS = 60 * 1000
 
 interface TurnstileVerifyResponse {
   success: boolean
@@ -21,20 +24,37 @@ interface TurnstileVerifyResponse {
 /**
  * Validate that hostname returned by Turnstile matches known venture domains
  */
-const isAllowedTurnstileHostname = (hostname?: string): boolean => {
+const isAllowedTurnstileHostname = (
+  hostname?: string,
+  isDevOrTest: boolean = false
+): boolean => {
   if (!hostname) {
+    return false
+  }
+  const lower = hostname.toLowerCase().trim().replace(/\.+$/, '')
+  if (isDevOrTest && (lower === 'localhost' || lower === '127.0.0.1')) {
     return true
   }
-  const lower = hostname.toLowerCase()
-  if (lower === 'localhost' || lower === '127.0.0.1') {
-    return true
-  }
+
   return (
-    lower === ALLOWED_ORIGIN_DOMAINS.KOMODOPLEX ||
-    lower.endsWith(`.${ALLOWED_ORIGIN_DOMAINS.KOMODOPLEX}`) ||
-    lower === ALLOWED_ORIGIN_DOMAINS.REPUTASK ||
-    lower.endsWith(`.${ALLOWED_ORIGIN_DOMAINS.REPUTASK}`)
+    isDomainOrSubdomain(lower, ALLOWED_ORIGIN_DOMAINS.KOMODOPLEX) ||
+    isDomainOrSubdomain(lower, ALLOWED_ORIGIN_DOMAINS.REPUTASK)
   )
+}
+
+/**
+ * Verify that Turnstile challenge timestamp is within valid window
+ */
+const isTurnstileTimestampValid = (challengeTs?: string): boolean => {
+  if (!challengeTs) {
+    return true
+  }
+  const timestamp = Date.parse(challengeTs)
+  if (Number.isNaN(timestamp)) {
+    return false
+  }
+  const ageMs = Date.now() - timestamp
+  return ageMs >= -MAX_FUTURE_SKEW_MS && ageMs <= MAX_CHALLENGE_AGE_MS
 }
 
 /**
@@ -43,9 +63,10 @@ const isAllowedTurnstileHostname = (hostname?: string): boolean => {
 const verifyTurnstileToken = async (
   secretKey: string | undefined,
   token: string,
-  remoteIp?: string
+  remoteIp?: string,
+  isDevOrTest: boolean = false
 ): Promise<boolean> => {
-  if (secretKey === TEST_SECRET && token === TEST_PASS_TOKEN) {
+  if (isDevOrTest && secretKey === TEST_SECRET && token === TEST_PASS_TOKEN) {
     return true
   }
 
@@ -54,7 +75,7 @@ const verifyTurnstileToken = async (
   const formData = new URLSearchParams()
   formData.append(FORM_KEY_SECRET, secretKey as string)
   formData.append(FORM_KEY_RESPONSE, token)
-  if (remoteIp) {
+  if (remoteIp && remoteIp !== 'unknown-ip') {
     formData.append(FORM_KEY_REMOTE_IP, remoteIp)
   }
 
@@ -72,13 +93,21 @@ const verifyTurnstileToken = async (
     }
 
     const data = (await response.json()) as TurnstileVerifyResponse
-    return Boolean(data.success) && isAllowedTurnstileHostname(data.hostname)
+    const isSuccess = Boolean(data.success)
+    const isHostnameValid = isAllowedTurnstileHostname(data.hostname, isDevOrTest)
+    const isTimeValid = isTurnstileTimestampValid(data.challenge_ts)
+
+    return isSuccess && isHostnameValid && isTimeValid
   } catch {
     return false
   }
 }
 
-export { isAllowedTurnstileHostname, verifyTurnstileToken }
+export {
+  isAllowedTurnstileHostname,
+  isTurnstileTimestampValid,
+  verifyTurnstileToken,
+}
 export type { TurnstileVerifyResponse }
 
 
